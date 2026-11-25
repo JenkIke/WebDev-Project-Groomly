@@ -15,8 +15,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col">
         <SidebarProvider>
           <AppSidebar />
-          <main>
-            <SidebarTrigger />
+          <main className="flex-1">
+            <SidebarTrigger className="md:hidden" />
             {children}
           </main>
         </SidebarProvider>
