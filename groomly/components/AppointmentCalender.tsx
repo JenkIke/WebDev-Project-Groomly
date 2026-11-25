@@ -10,7 +10,7 @@ const appointments = [
   {id: 3, dog: "Luna", service: "Full groom", date: new Date(2026, 11, 2, 9, 0)},
 ]
 
-const appointmentCalender = () => {
+const AppointmentCalender = () => {
   const [selected, setSelected] = useState<Date | undefined>();
 
   const now = new Date()
@@ -23,7 +23,26 @@ const appointmentCalender = () => {
         mode="single"
         selected={selected}
         onSelect={setSelected}
-        modifiers={{booked: appointments}}
+        modifiers={{booked: appointments.map((a) => a.date)}}
+        modifiersClassNames={{booked: "font-bold underline"}}
+        className="self-start rounded-lg border" />
+
+        <div>
+          <h3 className="mb-2 font-semibold">
+            {selected ? selected.toDateString() : "Upcoming appointments"}
+          </h3>
+          {shown.length === 0 && <p>No appointments.</p>}
+          <ul className="space-y-2">
+            {shown.map((a) => (
+              <li key={a.id} className="rounded-lg border p-3">
+                <p className="font-medium">{a.dog}: {a.service}</p>
+                <p className="text-sm text-muted-foreground">{a.date.toLocaleString()}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
     </div>
   )
 }
+
+export default AppointmentCalender;
