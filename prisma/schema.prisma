@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum PreferredContact {
+  EMAIL
+  PHONE
+  TEXT
+}
+
+enum AppointmentStatus {
+  BOOKED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(STAFF)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  appointments Appointment[]
+  visitNotes   VisitNote[]
+}
+
+model Client {
+  id               String           @id @default(uuid()) @db.Uuid
+  firstName        String
+  lastName         String
+  phone            String
+  email            String?
+  address          String?
+  preferredContact PreferredContact @default(EMAIL)
+  notes            String?
+  createdAt        DateTime         @default(now())
+
+  dogs Dog[]
+
+  @@index([lastName])
+  @@index([phone])
+}
+
+model Dog {
+  id                String    @id @default(uuid()) @db.Uuid
+  clientId          String    @db.Uuid
+  name              String
+  breed             String
+  birthDate         DateTime? @db.Date
+  weightKg          Decimal?  @db.Decimal(5, 2)
+  coatType          String?
+  temperament       String?
+  allergies         String?
+  vaccinationExpiry DateTime? @db.Date
+  preferredCut      String?
+  photoUrl          String?
+
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([clientId])
+  @@index([name])
+  @@index([breed])
+}
+
+model Service {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String  @unique
+  basePrice   Decimal @db.Decimal(10, 2)
+  durationMin Int
+  active      Boolean @default(true)
+
+  appointmentServices AppointmentService[]
+}
+
+model Appointment {
+  id             String            @id @default(uuid()) @db.Uuid
+  dogId          String            @db.Uuid
+  groomerId      String            @db.Uuid
+  startTime      DateTime
+  endTime        DateTime
+  status         AppointmentStatus @default(BOOKED)
+  totalPrice     Decimal           @db.Decimal(10, 2)
+  reminderSentAt DateTime?
+  createdAt      DateTime          @default(now())
+
+  dog      Dog                  @relation(fields: [dogId], references: [id])
+  groomer  User                 @relation(fields: [groomerId], references: [id])
+  services AppointmentService[]
+  notes    VisitNote[]
+
+  @@index([startTime])
+  @@index([groomerId, startTime])
+}
+
+model AppointmentService {
+  appointmentId String  @db.Uuid
+  serviceId     String  @db.Uuid
+  price         Decimal @db.Decimal(10, 2)
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  service     Service     @relation(fields: [serviceId], references: [id])
+
+  @@id([appointmentId, serviceId])
+}
+
+model VisitNote {
+  id            String   @id @default(uuid()) @db.Uuid
+  appointmentId String   @db.Uuid
+  authorId      String   @db.Uuid
+  body          String
+  createdAt     DateTime @default(now())
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  author      User        @relation(fields: [authorId], references: [id])
+}
