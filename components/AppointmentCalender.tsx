@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Calendar} from "@/components/ui/calendar";
-import { CalendarRange } from "lucide-react";
+import { enUS } from "date-fns/locale";
 
 const appointments = [
   {id: 1, dog: "Bella", service: "Bath and trim", date: new Date(2026, 10, 27, 10, 0)},
@@ -25,6 +25,7 @@ const AppointmentCalender = () => {
         onSelect={setSelected}
         modifiers={{booked: appointments.map((a) => a.date)}}
         modifiersClassNames={{booked: "font-bold underline"}}
+        locale={enUS}
         className="self-start rounded-lg border" />
 
         <div>
@@ -36,7 +37,7 @@ const AppointmentCalender = () => {
             {shown.map((a) => (
               <li key={a.id} className="rounded-lg border p-3">
                 <p className="font-medium">{a.dog}: {a.service}</p>
-                <p className="text-sm text-muted-foreground">{a.date.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">{a.date.toLocaleString("en-US")}</p>
               </li>
             ))}
           </ul>

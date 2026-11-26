@@ -2,17 +2,48 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install Node.js
+
+You need **Node.js 22 or newer** (npm is included). Download it from [nodejs.org](https://nodejs.org), then check your version:
+
+```bash
+node -v
+```
+
+### 2. Install the dependencies
+
+From the repository root (the folder that contains `package.json`), run:
+
+```bash
+npm install
+```
+
+This installs everything the project needs, so you don't have to install packages one by one or globally. Run it again after pulling changes that modify `package.json` or `package-lock.json`.
+
+The main packages are:
+
+| Package | Used for |
+| --- | --- |
+| `next`, `react`, `react-dom` | The app framework |
+| `tailwindcss`, `@tailwindcss/turbopack`, `tw-animate-css` | Styling and animations |
+| `shadcn`, `@base-ui/react`, `class-variance-authority`, `cn` | UI components in `components/ui` |
+| `lucide-react` | Icons |
+| `react-day-picker`, `date-fns` | The appointment calendar |
+| `typescript`, `eslint` | Type checking and linting |
+
+### 3. Run the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
+
+### Moving from the old `groomly/` folder
+
+The app used to live in `groomly/` and is now at the repository root. If you still have a `groomly/` folder after pulling, move any files of your own out of it (such as uncommitted work or `.env` files), delete it, and run `npm install` from the root.
+
+### Hydration warnings from browser extensions
+
+Extensions such as Grammarly can cause a hydration mismatch error that mentions attributes on `<body>`. To check whether an extension is the cause, open the site in a private window with extensions turned off.
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
