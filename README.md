@@ -37,6 +37,41 @@ The main packages are:
 npm run dev
 ```
 
+### Install commands by package
+
+**You don't need these to set up the project**, because `npm install` already installs everything. Use them only if a package is missing or you're rebuilding the setup.
+
+```bash
+# shadcn and UI helpers
+npm install shadcn @base-ui/react class-variance-authority cn tw-animate-css
+
+# Icons
+npm install lucide-react
+
+# Calendar
+npm install react-day-picker date-fns
+
+# Framework
+npm install next react react-dom
+
+# Development tools
+npm install -D tailwindcss @tailwindcss/turbopack typescript eslint eslint-config-next @types/node @types/react @types/react-dom
+```
+
+These commands may install newer versions than the ones the project uses and change `package.json` and `package-lock.json`.
+
+### shadcn components
+
+The components already in `components/ui` (`button`, `calendar`, `input`, `separator`, `sheet`, `sidebar`, `skeleton`, `tooltip`) are part of the repository, so you don't need to add them again.
+
+To add a new component, replace `card` with the one you need:
+
+```bash
+npx shadcn@latest add card
+```
+
+You don't need to run `shadcn init`, because the project is already configured in `components.json`. If the command asks to overwrite an existing file, answer no unless you mean to replace it. Commit the new files along with any changes to `package.json` and `package-lock.json`.
+
 ### Moving from the old `groomly/` folder
 
 The app used to live in `groomly/` and is now at the repository root. If you still have a `groomly/` folder after pulling, move any files of your own out of it (such as uncommitted work or `.env` files), delete it, and run `npm install` from the root.
