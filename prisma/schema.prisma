@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum PreferredContact {
+  EMAIL
+  PHONE
+  TEXT
+}
+
+enum AppointmentStatus {
+  BOOKED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+// Every account owns its own data. Clients, Dogs, Services and
+// Appointments all carry an ownerId, and every query must filter by it.
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(STAFF)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  clients      Client[]
+  dogs         Dog[]
+  services     Service[]
+  appointments Appointment[]
+  visitNotes   VisitNote[]
+}
+
+model Client {
+  id               String           @id @default(uuid()) @db.Uuid
+  ownerId          String           @db.Uuid
+  firstName        String
+  lastName         String
+  phone            String
+  email            String?
+  address          String?
+  preferredContact PreferredContact @default(EMAIL)
+  notes            String?
+  createdAt        DateTime         @default(now())
+
+  owner User  @relation(fields: [ownerId], references: [id])
+  dogs  Dog[]
+
+  @@index([ownerId])
+  @@index([lastName])
+  @@index([phone])
+}
+
+model Dog {
+  id                String    @id @default(uuid()) @db.Uuid
+  ownerId           String    @db.Uuid
+  clientId          String    @db.Uuid
+  name              String
+  breed             String
+  birthDate         DateTime? @db.Date
+  weightKg          Decimal?  @db.Decimal(5, 2)
+  coatType          String?
+  temperament       String?
+  allergies         String?
+  vaccinationExpiry DateTime? @db.Date
+  preferredCut      String?
+  photoUrl          String?
+
+  owner        User          @relation(fields: [ownerId], references: [id])
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([ownerId])
+  @@index([clientId])
+  @@index([name])
+  @@index([breed])
+}
+
+model Service {
+  id          String  @id @default(uuid()) @db.Uuid
+  ownerId     String  @db.Uuid
+  name        String
+  basePrice   Decimal @db.Decimal(10, 2)
+  durationMin Int
+  active      Boolean @default(true)
+
+  owner               User                 @relation(fields: [ownerId], references: [id])
+  appointmentServices AppointmentService[]
+
+  @@unique([ownerId, name])
+}
+
+model Appointment {
+  id             String            @id @default(uuid()) @db.Uuid
+  ownerId        String            @db.Uuid
+  dogId          String            @db.Uuid
+  startTime      DateTime
+  endTime        DateTime
+  status         AppointmentStatus @default(BOOKED)
+  totalPrice     Decimal           @db.Decimal(10, 2)
+  reminderSentAt DateTime?
+  createdAt      DateTime          @default(now())
+
+  owner    User                 @relation(fields: [ownerId], references: [id])
+  dog      Dog                  @relation(fields: [dogId], references: [id])
+  services AppointmentService[]
+  notes    VisitNote[]
+
+  @@index([startTime])
+  @@index([ownerId, startTime])
+}
+
+model AppointmentService {
+  appointmentId String  @db.Uuid
+  serviceId     String  @db.Uuid
+  price         Decimal @db.Decimal(10, 2)
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  service     Service     @relation(fields: [serviceId], references: [id])
+
+  @@id([appointmentId, serviceId])
+}
+
+model VisitNote {
+  id            String   @id @default(uuid()) @db.Uuid
+  appointmentId String   @db.Uuid
+  authorId      String   @db.Uuid
+  body          String
+  createdAt     DateTime @default(now())
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  author      User        @relation(fields: [authorId], references: [id])
+}

@@ -31,7 +31,221 @@ The main packages are:
 | `react-day-picker`, `date-fns` | The appointment calendar |
 | `typescript`, `eslint` | Type checking and linting |
 
-### 3. Run the development server
+### 3. Set up the database (Neon + Prisma)
+
+The app stores its data in **Neon**, a hosted PostgreSQL database, and uses **Prisma** to read and write it. The database is already created and shared. You only need to connect to it. You do **not** need a Prisma account.
+
+**Database packages** (already installed by `npm install`):
+
+| Package | Used for |
+| --- | --- |
+| `prisma`, `@prisma/client` | Prisma ORM and its CLI |
+| `@prisma/adapter-neon` | Connects Prisma to Neon |
+| `dotenv` | Loads the `.env` file |
+| `tsx` | Runs the seed script |
+| `bcryptjs`, `@types/bcryptjs` | Password hashing |
+
+If any of these are missing from your `node_modules`, install them (Prisma is pinned to version 7 on purpose):
+
+```bash
+npm install @prisma/client@7 @prisma/adapter-neon@7 dotenv bcryptjs
+npm install -D prisma@7 tsx @types/bcryptjs
+```
+
+**a. Pull the latest code and install**
+
+```bash
+git pull
+npm install
+```
+
+**b. Create your `.env` file**
+
+Create a file named `.env` in the repository root (next to `package.json`) with these two lines. The project owner will send you the values:
+
+```dotenv
+DATABASE_URL=
+DIRECT_URL=
+```
+
+**c. Generate the Prisma client**
+
+```bash
+npx prisma generate
+```
+
+This creates the folder `lib/generated/prisma`. It is not committed to git, so run it once after cloning and again whenever `prisma/schema.prisma` changes. If VS Code shows `Cannot find module '@/lib/generated/prisma/client'`, run this command, then press `Ctrl+Shift+P` and choose **TypeScript: Restart TS Server**.
+
+**d. Check that it works**
+
+```bash
+npx prisma studio
+```
+
+Prisma Studio opens at [http://localhost:51212](http://localhost:51212). The first table shown may be `_prisma_migrations`, which is Prisma's own history table. Use the left sidebar to open the real tables: `User`, `Client`, `Dog`, `Service`, `Appointment`, `AppointmentService`, `VisitNote`.
+
+**VS Code:** install the official **Prisma** extension (search "Prisma" in the Extensions tab) for syntax highlighting and formatting of `schema.prisma`.
+
+#### Where things live
+
+| Path | What it is |
+| --- | --- |
+| `prisma/schema.prisma` | The database tables (the data model) |
+| `prisma/migrations/` | History of database changes, committed to git |
+| `prisma/seed.ts` | Sample data script |
+| `prisma7.config.ts` | Prisma settings (reads `.env`) |
+| `lib/db.ts` | The shared database client. Import `prisma` from here in API routes and server code |
+| `lib/generated/prisma/` | Auto-generated client (git-ignored, created by `npx prisma generate`) |
+
+#### Changing the database
+
+Only change tables through the schema and migrations. Do not edit tables by hand in the Neon dashboard.
+
+1. Edit `prisma/schema.prisma`.
+2. Run `npx prisma migrate dev --name short_description`.
+3. Commit the schema **and** the new folder in `prisma/migrations/`.
+4. Teammates pull, then run `npx prisma migrate deploy` and `npx prisma generate`.
+
+#### Database commands
+
+| Command | What it does |
+| --- | --- |
+| `npx prisma generate` | Rebuilds the Prisma client (fresh clone or schema change) |
+| `npx prisma studio` | Opens the visual database browser |
+| `npx prisma migrate deploy` | Applies migrations pulled from git (safe to run any time) |
+| `npx prisma migrate dev --name x` | Creates and applies a new migration after you edit the schema |
+| `npx prisma migrate status` | Shows whether the database matches the migrations |
+| `npx prisma db seed` | Loads sample data (already done, no need to run it) |
+
+The seeded development login is `admin@groomly.test` / `ChangeMe123!`. This is for development only.
+
+#### Database troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| `Cannot find module '@/lib/generated/prisma/client'` | Run `npx prisma generate` |
+| `Environment variable not found: DATABASE_URL` (or `DIRECT_URL`) | `.env` is missing, misnamed, or not in the repository root |
+| Connection error mentioning `channel_binding` | Delete `&channel_binding=require` from the end of the string |
+| The first request is slow after a quiet period | Normal. Neon pauses idle databases and wakes them on the next request |
+| `migrate dev` asks to reset the database | Stop and ask the team. Use `migrate deploy` if you only pulled changes |
+| Authentication failed | The password changed. Ask the project owner for a fresh string |
+
+### 4. Set up authentication (Auth.js)
+
+Anyone can create an account with an email and password. Accounts live in the `User` table in Neon, and passwords are stored as bcrypt hashes (never as plain text). **Every account only sees its own clients, dogs, services and appointments.** A login lasts 8 hours and is extended while you keep using the app. Clicking **Sign out** ends it right away.
+
+**Authentication packages** (already installed by `npm install`):
+
+| Package | Used for |
+| --- | --- |
+| `next-auth@beta` | Auth.js v5: login sessions and the `/api/auth` routes (install with the `@beta` tag, since v5 is published as a beta) |
+| `zod` | Validating the login and sign-up forms |
+| `bcryptjs` | Hashing and checking passwords (installed with the database packages) |
+
+If `next-auth` or `zod` is missing from your `node_modules`, install them:
+
+```bash
+npm install next-auth@beta zod
+```
+
+**a. Update your database after pulling**
+
+The accounts feature changed the database (every client, dog, service and appointment now has an `ownerId`). After pulling, run:
+
+```bash
+git pull
+npm install
+npx prisma migrate deploy
+npx prisma generate
+```
+
+**b. Create your `AUTH_SECRET` key**
+
+`AUTH_SECRET` is a random string that Auth.js uses to sign login cookies. There is no website or account to get it from. You generate it yourself in the terminal. This works on Windows PowerShell, macOS and Linux:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+Copy the line it prints (something like `k3J...=`).
+
+**c. Add it to your `.env` file**
+
+Open the `.env` file in the repository root (the same one that has your database strings) and add one line at the bottom. Your `.env` should now have three values:
+
+```dotenv
+DATABASE_URL=
+DIRECT_URL=
+AUTH_SECRET=paste-the-generated-value-here
+```
+
+- Every developer generates **their own** `AUTH_SECRET` for local work. Don't share it, and don't commit `.env` (it is git-ignored).
+- The deployed site (Vercel) gets its own different value under **Project Settings > Environment Variables**.
+- Restart `npm run dev` after changing `.env`, because Next.js only reads it on startup.
+- Optional: add `SIGNUP_CODE=some-phrase` to `.env` and the sign-up page will ask for that invite code. Leave it out for open sign-up.
+
+**d. Test it**
+
+```bash
+npm run dev
+```
+
+1. Open [http://localhost:3000](http://localhost:3000). You should be sent to `/login` (no sidebar).
+2. Sign in with the demo account `admin@groomly.test` / `ChangeMe123!`, or click **Create an account** to make your own.
+3. Refresh the page. You should stay signed in.
+4. Click **Sign out** at the bottom of the sidebar. You should return to `/login`.
+
+#### Where the auth files live
+
+| Path | What it is |
+| --- | --- |
+| `proxy.ts` | Sends anyone who isn't signed in to `/login`. It must stay in the project root. On Next.js 15 or older, rename it to `middleware.ts` |
+| `lib/auth/auth.ts` | The email and password check against the `User` table |
+| `lib/auth/auth.config.ts` | Session length, public pages (`/login`, `/signup`), and role/id in the session |
+| `lib/auth/session.ts` | `requireUser()` for pages and `getUserId()` for API routes |
+| `lib/auth/actions.ts` | The sign-out server action |
+| `lib/auth/next-auth.d.ts` | TypeScript types for `session.user.id` and `session.user.role` |
+| `lib/default-services.ts` | The starter price list every new account receives |
+| `app/api/auth/[...nextauth]/route.ts` | Auth.js endpoints |
+| `app/login/`, `app/signup/` | The login and sign-up pages |
+| `components/SignOutButton.tsx` | The sign-out button used in `AppSidebar.tsx` |
+
+#### Rule for every API route and page that reads data
+
+Signing in only proves who someone is. Your code has to keep accounts apart, so **every database query must filter by `ownerId`**:
+
+```ts
+import { getUserId } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+
+const userId = await getUserId();
+if (!userId) return new Response("Unauthorized", { status: 401 });
+
+// list
+const dogs = await prisma.dog.findMany({ where: { ownerId: userId } });
+
+// single record: filter by BOTH id and owner
+const dog = await prisma.dog.findFirst({ where: { id, ownerId: userId } });
+
+// create: always set the owner yourself
+await prisma.dog.create({ data: { ...fields, ownerId: userId } });
+```
+
+Never trust an `ownerId` or `userId` sent from the browser. When you create a dog, check that its `clientId` belongs to the same user.
+
+#### Authentication troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| `MissingSecret` error | `AUTH_SECRET` is missing from `.env`, or you didn't restart `npm run dev` |
+| You can open pages without logging in | Next.js 15 or older: rename `proxy.ts` to `middleware.ts`. Check with `npm ls next` |
+| `Cannot find module 'next-auth'` | Run `npm install` (or `npm install next-auth@beta zod`) |
+| `Cannot find module '@/lib/auth/actions'` | Make sure `lib/auth/actions.ts` exists (see the files table above) |
+| Redirect loop on `/login` | `/login` and `/signup` must be listed in `PUBLIC_PATHS` in `lib/auth/auth.config.ts` |
+| `Unknown argument ownerId` or similar Prisma errors | Run `npx prisma migrate deploy` and `npx prisma generate`, then restart the TS server |
+| "Invalid email or password" for a correct login | Emails are stored in lowercase. The account may not exist in your database branch, so run Prisma Studio to check the `User` table |
+
+### 5. Run the development server
 
 ```bash
 npm run dev
@@ -53,6 +267,9 @@ npm install react-day-picker date-fns
 
 # Framework
 npm install next react react-dom
+
+# Authentication
+npm install next-auth@beta zod
 
 # Development tools
 npm install -D tailwindcss @tailwindcss/turbopack typescript eslint eslint-config-next @types/node @types/react @types/react-dom
