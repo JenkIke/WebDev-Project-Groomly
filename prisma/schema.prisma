@@ -25,6 +25,8 @@ enum AppointmentStatus {
   NO_SHOW
 }
 
+// Every account owns its own data. Clients, Dogs, Services and
+// Appointments all carry an ownerId, and every query must filter by it.
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   name         String
@@ -34,12 +36,16 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
+  clients      Client[]
+  dogs         Dog[]
+  services     Service[]
   appointments Appointment[]
   visitNotes   VisitNote[]
 }
 
 model Client {
   id               String           @id @default(uuid()) @db.Uuid
+  ownerId          String           @db.Uuid
   firstName        String
   lastName         String
   phone            String
@@ -49,14 +55,17 @@ model Client {
   notes            String?
   createdAt        DateTime         @default(now())
 
-  dogs Dog[]
+  owner User  @relation(fields: [ownerId], references: [id])
+  dogs  Dog[]
 
+  @@index([ownerId])
   @@index([lastName])
   @@index([phone])
 }
 
 model Dog {
   id                String    @id @default(uuid()) @db.Uuid
+  ownerId           String    @db.Uuid
   clientId          String    @db.Uuid
   name              String
   breed             String
@@ -69,9 +78,11 @@ model Dog {
   preferredCut      String?
   photoUrl          String?
 
+  owner        User          @relation(fields: [ownerId], references: [id])
   client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   appointments Appointment[]
 
+  @@index([ownerId])
   @@index([clientId])
   @@index([name])
   @@index([breed])
@@ -79,18 +90,22 @@ model Dog {
 
 model Service {
   id          String  @id @default(uuid()) @db.Uuid
-  name        String  @unique
+  ownerId     String  @db.Uuid
+  name        String
   basePrice   Decimal @db.Decimal(10, 2)
   durationMin Int
   active      Boolean @default(true)
 
+  owner               User                 @relation(fields: [ownerId], references: [id])
   appointmentServices AppointmentService[]
+
+  @@unique([ownerId, name])
 }
 
 model Appointment {
   id             String            @id @default(uuid()) @db.Uuid
+  ownerId        String            @db.Uuid
   dogId          String            @db.Uuid
-  groomerId      String            @db.Uuid
   startTime      DateTime
   endTime        DateTime
   status         AppointmentStatus @default(BOOKED)
@@ -98,13 +113,13 @@ model Appointment {
   reminderSentAt DateTime?
   createdAt      DateTime          @default(now())
 
+  owner    User                 @relation(fields: [ownerId], references: [id])
   dog      Dog                  @relation(fields: [dogId], references: [id])
-  groomer  User                 @relation(fields: [groomerId], references: [id])
   services AppointmentService[]
   notes    VisitNote[]
 
   @@index([startTime])
-  @@index([groomerId, startTime])
+  @@index([ownerId, startTime])
 }
 
 model AppointmentService {

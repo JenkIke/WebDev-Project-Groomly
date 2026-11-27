@@ -5,6 +5,7 @@ import {
   SidebarGroup,
   SidebarHeader,
 } from "@/components/ui/sidebar"
+import { SignOutButton } from "@/components/SignOutButton"
 
 export function AppSidebar() {
   return (
@@ -14,7 +15,9 @@ export function AppSidebar() {
         <SidebarGroup />
         <SidebarGroup />
       </SidebarContent>
-      <SidebarFooter />
+      <SidebarFooter>
+        <SignOutButton />
+      </SidebarFooter>
     </Sidebar>
   )
 }
